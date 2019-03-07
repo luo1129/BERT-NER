@@ -129,7 +129,7 @@ class InputFeatures(object):
 
 class DataProcessor(object):
     """Base class for data converters for sequence classification data sets."""
-
+    labellist = {}
     def get_train_examples(self, data_dir):
         """Gets a collection of `InputExample`s for the train set."""
         raise NotImplementedError()
@@ -157,8 +157,6 @@ class DataProcessor(object):
                 if contends.startswith("-DOCSTART-"):
                     words.append('')
                     continue
-                print("////////////")
-                print(words)
                 if len(contends) == 0 and words[-1] == '。':
                     l = ' '.join([label for label in labels if len(label) > 0])
                     w = ' '.join([word for word in words if len(word) > 0])
@@ -168,7 +166,9 @@ class DataProcessor(object):
                     continue
                 words.append(word)
                 labels.append(label)
-            print(lines)
+                cls.labellist[label]=""
+            print(list(cls.labellist.keys()))
+            print(len(cls.labellist.keys()))
             return lines
 
 
@@ -180,7 +180,7 @@ class NerProcessor(DataProcessor):
 
     def get_dev_examples(self, data_dir):
         return self._create_example(
-            self._read_data(os.path.join(data_dir, "dev.txt")), "dev"
+            self._read_data(os.path.join(data_dir, "dev1.txt")), "dev"
         )
 
     def get_test_examples(self,data_dir):
@@ -189,7 +189,9 @@ class NerProcessor(DataProcessor):
 
 
     def get_labels(self):
-        return ["B-address", "I-address", "E-address", "O", "B-navi", "I-navi", "B-option", "I-option", "B-nearby", "I-nearby", "X","[CLS]","[SEP]"]
+        return ["X","[CLS]","[SEP]", 'O', 'B-address', 'I-address', 'E-address', 'B-navi', 'I-navi', 'B-option', 'I-option', 'B-nearby', 'I-nearby', 'E-option', 'B-location', 'I-location', 'E-location', 'B-passby', 'I-passby', 'E-passby', 'B-list', 'I-list', 'B-date', 'I-date', 'B-order', 'I-order', 'E-order', 'B-mode', 'I-mode', 'E-mode', 'B-save', 'I-save', 'E-list', 'B-named', 'I-named', 'B-delete', 'I-delete']
+        # return ["X","[CLS]","[SEP]", 'O', 'B-address', 'I-address', 'E-address']
+        # return ["X","[CLS]","[SEP]", 'O', 'B-address', 'I-address', 'E-address', 'B-navi', 'I-navi', 'B-option', 'I-option', 'B-nearby', 'I-nearby']
 
     def _create_example(self, lines, set_type):
         examples = []
@@ -377,7 +379,7 @@ def create_model(bert_config, is_training, input_ids, input_mask,
         output_layer = tf.reshape(output_layer, [-1, hidden_size])
         logits = tf.matmul(output_layer, output_weight, transpose_b=True)
         logits = tf.nn.bias_add(logits, output_bias)
-        logits = tf.reshape(logits, [-1, FLAGS.max_seq_length, 13])
+        logits = tf.reshape(logits, [-1, FLAGS.max_seq_length, 38])
         # mask = tf.cast(input_mask,tf.float32)
         # loss = tf.contrib.seq2seq.sequence_loss(logits,labels,mask)
         # return (loss, logits, predict)
@@ -442,9 +444,9 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             def metric_fn(per_example_loss, label_ids, logits):
             # def metric_fn(label_ids, logits):
                 predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
-                precision = tf_metrics.precision(label_ids,predictions,13,[1,2,4,5,6,7,8,9],average="macro")
-                recall = tf_metrics.recall(label_ids,predictions,13,[1,2,4,5,6,7,8,9],average="macro")
-                f = tf_metrics.f1(label_ids,predictions,13,[1,2,4,5,6,7,8,9],average="macro")
+                precision = tf_metrics.precision(label_ids,predictions,38,[1,2,4,5,6,7,8,9],average="macro")
+                recall = tf_metrics.recall(label_ids,predictions,38,[1,2,4,5,6,7,8,9],average="macro")
+                f = tf_metrics.f1(label_ids,predictions,38,[1,2,4,5,6,7,8,9],average="macro")
                 #
                 return {
                     "eval_precision":precision,
@@ -488,7 +490,7 @@ def main(_):
         raise ValueError("Task not found: %s" % (task_name))
     processor = processors[task_name]()
 
-    label_list = processor.get_labels()
+
 
     tokenizer = tokenization.FullTokenizer(
         vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
@@ -515,6 +517,7 @@ def main(_):
 
     if FLAGS.do_train:
         train_examples = processor.get_train_examples(FLAGS.data_dir)
+        label_list = processor.get_labels()
         num_train_steps = int(
             len(train_examples) / FLAGS.train_batch_size * FLAGS.num_train_epochs)
         num_warmup_steps = int(num_train_steps * FLAGS.warmup_proportion)
@@ -538,7 +541,6 @@ def main(_):
         predict_batch_size=FLAGS.predict_batch_size)
 
     if FLAGS.do_train:
-        print(1)
         train_file = os.path.join(FLAGS.output_dir, "train.tf_record")
         filed_based_convert_examples_to_features(
             train_examples, label_list, FLAGS.max_seq_length, tokenizer, train_file)
