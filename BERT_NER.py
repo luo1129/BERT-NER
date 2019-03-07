@@ -165,6 +165,7 @@ class DataProcessor(object):
                     continue
                 words.append(word)
                 labels.append(label)
+            print(lines)
             return lines
 
 
@@ -263,6 +264,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length, tokeni
     #assert len(label_mask) == max_seq_length
 
     if ex_index < 5:
+        print(labellist)
         tf.logging.info("*** Example ***")
         tf.logging.info("guid: %s" % (example.guid))
         tf.logging.info("tokens: %s" % " ".join(
@@ -542,7 +544,7 @@ def main(_):
             seq_length=FLAGS.max_seq_length,
             is_training=True,
             drop_remainder=True)
-        estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
+        # estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
     if FLAGS.do_eval:
         eval_examples = processor.get_dev_examples(FLAGS.data_dir)
         eval_file = os.path.join(FLAGS.output_dir, "eval.tf_record")
