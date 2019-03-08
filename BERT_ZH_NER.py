@@ -180,7 +180,7 @@ class NerProcessor(DataProcessor):
 
     def get_dev_examples(self, data_dir):
         return self._create_example(
-            self._read_data(os.path.join(data_dir, "dev1.txt")), "dev"
+            self._read_data(os.path.join(data_dir, "dev.txt")), "dev"
         )
 
     def get_test_examples(self,data_dir):
@@ -490,7 +490,7 @@ def main(_):
         raise ValueError("Task not found: %s" % (task_name))
     processor = processors[task_name]()
 
-
+    label_list = processor.get_labels()
 
     tokenizer = tokenization.FullTokenizer(
         vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
@@ -517,7 +517,6 @@ def main(_):
 
     if FLAGS.do_train:
         train_examples = processor.get_train_examples(FLAGS.data_dir)
-        label_list = processor.get_labels()
         num_train_steps = int(
             len(train_examples) / FLAGS.train_batch_size * FLAGS.num_train_epochs)
         num_warmup_steps = int(num_train_steps * FLAGS.warmup_proportion)
