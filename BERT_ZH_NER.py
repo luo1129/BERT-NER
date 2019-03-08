@@ -185,11 +185,12 @@ class NerProcessor(DataProcessor):
 
     def get_test_examples(self,data_dir):
         return self._create_example(
-            self._read_data(os.path.join(data_dir, "test.txt")), "test")
+            self._read_data(os.path.join(data_dir, "dev.txt")), "test")
 
 
     def get_labels(self):
-        return ["X","[CLS]","[SEP]", 'O', 'B-address', 'I-address', 'E-address', 'B-navi', 'I-navi', 'B-option', 'I-option', 'B-nearby', 'I-nearby', 'E-option', 'B-location', 'I-location', 'E-location', 'B-passby', 'I-passby', 'E-passby', 'B-list', 'I-list', 'B-date', 'I-date', 'B-order', 'I-order', 'E-order', 'B-mode', 'I-mode', 'E-mode', 'B-save', 'I-save', 'E-list', 'B-named', 'I-named', 'B-delete', 'I-delete']
+        return ["X","[CLS]","[SEP]", 'O', 'address', 'navi', 'option', 'nearby', 'location', 'passby', 'list', 'date', 'order', 'mode', 'save', 'named', 'delete']
+        # return ["X","[CLS]","[SEP]", 'O', 'B-address', 'I-address', 'E-address', 'B-navi', 'I-navi', 'B-option', 'I-option', 'B-nearby', 'I-nearby', 'E-option', 'B-location', 'I-location', 'E-location', 'B-passby', 'I-passby', 'E-passby', 'B-list', 'I-list', 'B-date', 'I-date', 'B-order', 'I-order', 'E-order', 'B-mode', 'I-mode', 'E-mode', 'B-save', 'I-save', 'E-list', 'B-named', 'I-named', 'B-delete', 'I-delete']
         # return ["X","[CLS]","[SEP]", 'O', 'B-address', 'I-address', 'E-address']
         # return ["X","[CLS]","[SEP]", 'O', 'B-address', 'I-address', 'E-address', 'B-navi', 'I-navi', 'B-option', 'I-option', 'B-nearby', 'I-nearby']
 
@@ -379,7 +380,7 @@ def create_model(bert_config, is_training, input_ids, input_mask,
         output_layer = tf.reshape(output_layer, [-1, hidden_size])
         logits = tf.matmul(output_layer, output_weight, transpose_b=True)
         logits = tf.nn.bias_add(logits, output_bias)
-        logits = tf.reshape(logits, [-1, FLAGS.max_seq_length, 38])
+        logits = tf.reshape(logits, [-1, FLAGS.max_seq_length, 18])
         # mask = tf.cast(input_mask,tf.float32)
         # loss = tf.contrib.seq2seq.sequence_loss(logits,labels,mask)
         # return (loss, logits, predict)
@@ -390,6 +391,8 @@ def create_model(bert_config, is_training, input_ids, input_mask,
         loss = tf.reduce_sum(per_example_loss)
         probabilities = tf.nn.softmax(logits, axis=-1)
         predict = tf.argmax(probabilities,axis=-1)
+        print("/////////////////")
+        print(predict)
         return (loss, per_example_loss, logits,predict)
         ##########################################################################
         
@@ -446,9 +449,9 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
                 print(label_ids)
                 print(predictions)
-                precision = tf_metrics.precision(label_ids,predictions,38,[1,2,4,5,6,7,8,9],average="macro")
-                recall = tf_metrics.recall(label_ids,predictions,38,[1,2,4,5,6,7,8,9],average="macro")
-                f = tf_metrics.f1(label_ids,predictions,38,[1,2,4,5,6,7,8,9],average="macro")
+                precision = tf_metrics.precision(label_ids,predictions,18,range(5, 18),average="macro")
+                recall = tf_metrics.recall(label_ids,predictions,18,range(5, 18),average="macro")
+                f = tf_metrics.f1(label_ids,predictions,18,range(5, 18),average="macro")
                 #
                 return {
                     "eval_precision":precision,
@@ -456,6 +459,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                     "eval_f": f,
                     #"eval_loss": loss,
                 }
+            print("////////////////////////")
+            print(logits)
             eval_metrics = (metric_fn, [per_example_loss, label_ids, logits])
             # eval_metrics = (metric_fn, [label_ids, logits])
             output_spec = tf.contrib.tpu.TPUEstimatorSpec(
@@ -610,6 +615,7 @@ def main(_):
 
         result = estimator.predict(input_fn=predict_input_fn)
         output_predict_file = os.path.join(FLAGS.output_dir, "label_test.txt")
+        print(result)
         with open(output_predict_file,'w') as writer:
             for prediction in result:
                 output_line = "\n".join(id2label[id] for id in prediction if id!=0) + "\n"
